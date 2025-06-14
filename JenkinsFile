@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        REMOTE_HOST = '3.219.208.168'
-        SSH_KEY_PATH = '/var/lib/jenkins/.ssh/chat-ci'
-        ANSIBLE_PLAYBOOK = '/usr/bin/ansible-playbook'  // use full path
+        REMOTE_HOST = "3.219.208.168"
+        SSH_KEY = "/var/lib/jenkins/.ssh/chat-ci"
+        SSH_USER = "ubuntu"
     }
 
     stages {
@@ -19,7 +19,7 @@ pipeline {
                 sshagent (credentials: ['chat-ec2-key']) {
                     sh '''
                         echo Running Ansible playbook on remote server...
-                        ${ANSIBLE_PLAYBOOK} -i ${REMOTE_HOST}, ./ansible/site.yml --private-key ${SSH_KEY_PATH} -u ubuntu
+                        sudo -E /usr/bin/ansible-playbook -i ${REMOTE_HOST}, ./ansible/site.yml --private-key ${SSH_KEY} -u ${SSH_USER}
                     '''
                 }
             }
@@ -29,8 +29,8 @@ pipeline {
             steps {
                 sshagent (credentials: ['chat-ec2-key']) {
                     sh '''
-                        echo Restarting PM2 App...
-                        ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_PATH} ubuntu@${REMOTE_HOST} 'pm2 restart chat-app || pm2 start /home/ubuntu/chat-app/app.js --name chat-app'
+                        echo Restarting PM2 process...
+                        ssh -o StrictHostKeyChecking=no -i ${SSH_KEY} ${SSH_USER}@${REMOTE_HOST} 'pm2 restart chat-app || pm2 start server.js --name chat-app'
                     '''
                 }
             }
@@ -40,9 +40,6 @@ pipeline {
     post {
         failure {
             echo 'Pipeline failed. Please check Jenkins logs for details.'
-        }
-        success {
-            echo 'Deployment completed successfully.'
         }
     }
 }
