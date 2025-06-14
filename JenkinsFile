@@ -1,0 +1,22 @@
+// Jenkinsfile
+pipeline {
+    agent any
+
+    stages {
+        stage('Deploy to EC2') {
+            steps {
+                sshagent(['chat-ec2-key']) {
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no ubuntu@3.219.208.168 '
+                          cd chat-app &&
+                          git pull origin master &&
+                          npm install &&
+                          pm2 restart chat-app
+                        '
+                    '''
+                }
+            }
+        }
+    }
+}
+
