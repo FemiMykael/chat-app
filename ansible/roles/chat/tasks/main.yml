@@ -1,0 +1,29 @@
+---
+- name: Update APT
+  apt: update_cache=yes force_apt_get=yes
+
+- name: Install Node.js and NPM
+  apt:
+    name: nodejs,npm
+    state: present
+
+- name: Install PM2 globally
+  npm:
+    name: pm2
+    global: yes
+
+- name: Upload app files
+  copy:
+    src: "{{ playbook_dir }}/chat-app/"
+    dest: /home/ubuntu/chat-app/
+    mode: 0755
+  become: yes
+
+- name: Install dependencies
+  npm:
+    path: /home/ubuntu/chat-app/
+    state: present
+
+- name: Start app with PM2
+  command: pm2 start /home/ubuntu/chat-app/app.js --name chat-app
+
