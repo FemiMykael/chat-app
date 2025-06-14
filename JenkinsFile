@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        REMOTE_HOST = '3.219.208.168'
-        SSH_CRED_ID = 'chat-ec2-key'
-        PRIVATE_KEY_PATH = '/var/lib/jenkins/.ssh/chat-ci'
+        ANSIBLE_HOST = "3.219.208.168"
+        SSH_CRED_ID = "chat-ec2-key"
+        PRIVATE_KEY_PATH = "/var/lib/jenkins/.ssh/chat-ci"
     }
 
     stages {
@@ -16,10 +16,10 @@ pipeline {
 
         stage('Run Ansible Playbook') {
             steps {
-                sshagent(credentials: [env.SSH_CRED_ID]) {
+                sshagent (credentials: ["${env.SSH_CRED_ID}"]) {
                     sh '''
-                        echo "Running Ansible playbook on remote server..."
-                        /usr/bin/ansible-playbook -i ${REMOTE_HOST}, ./ansible/site.yml --private-key ${PRIVATE_KEY_PATH} -u ubuntu
+                        echo Running Ansible playbook on remote server...
+                        /usr/bin/ansible-playbook -i ${ANSIBLE_HOST}, ./ansible/site.yml --private-key ${PRIVATE_KEY_PATH} -u ubuntu
                     '''
                 }
             }
@@ -27,10 +27,10 @@ pipeline {
 
         stage('Restart App') {
             steps {
-                sshagent(credentials: [env.SSH_CRED_ID]) {
+                sshagent (credentials: ["${env.SSH_CRED_ID}"]) {
                     sh '''
-                        echo "Restarting chat-app with PM2..."
-                        ssh -o StrictHostKeyChecking=no -i ${PRIVATE_KEY_PATH} ubuntu@${REMOTE_HOST} 'pm2 restart chat-app --update-env || pm2 start chat-app/app.js --name chat-app'
+                        echo Restarting Node.js App with PM2...
+                        ssh -o StrictHostKeyChecking=no -i ${PRIVATE_KEY_PATH} ubuntu@${ANSIBLE_HOST} "pm2 restart chat-app || pm2 start /home/ubuntu/chat-app/app.js --name chat-app"
                     '''
                 }
             }
