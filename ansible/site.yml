@@ -1,5 +1,4 @@
 - hosts: chat
-  become: yes
   roles:
     - chat
 
