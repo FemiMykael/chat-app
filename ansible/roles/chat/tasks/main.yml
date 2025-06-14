@@ -17,7 +17,6 @@
     src: "{{ playbook_dir }}/chat-app/"
     dest: /home/ubuntu/chat-app/
     mode: 0755
-  become: yes
 
 - name: Install dependencies
   npm:
