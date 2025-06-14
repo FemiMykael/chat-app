@@ -2,38 +2,47 @@ pipeline {
     agent any
 
     environment {
-        ANSIBLE_HOST = "3.219.208.168"
-        SSH_CRED_ID = "chat-ec2-key"
-        PRIVATE_KEY_PATH = "/var/lib/jenkins/.ssh/chat-ci"
+        EC2_IP = '3.219.208.168'
+        SSH_KEY = '/var/lib/jenkins/.ssh/chat-ci'
+        REMOTE_USER = 'ubuntu'
     }
 
     stages {
         stage('Checkout Code') {
             steps {
-                git url: 'https://github.com/FemiMykael/chat-app.git', branch: 'master'
+                git credentialsId: 'chat-ec2-key', url: 'https://github.com/FemiMykael/chat-app.git', branch: 'master'
             }
         }
 
         stage('Run Ansible Playbook') {
             steps {
-                sshagent (credentials: ["${env.SSH_CRED_ID}"]) {
+                sshagent(credentials: ['chat-ec2-key']) {
                     sh '''
                         echo Running Ansible playbook on remote server...
-                        /usr/bin/ansible-playbook -i ${ANSIBLE_HOST}, ./ansible/site.yml --private-key ${PRIVATE_KEY_PATH} -u ubuntu
+                        /usr/bin/ansible-playbook -i ${EC2_IP}, ./ansible/site.yml --private-key ${SSH_KEY} -u ${REMOTE_USER}
                     '''
                 }
             }
         }
 
-        stage('Restart App') {
+        stage('Restart App with PM2') {
             steps {
-                sshagent (credentials: ["${env.SSH_CRED_ID}"]) {
+                sshagent(credentials: ['chat-ec2-key']) {
                     sh '''
-                        echo Restarting Node.js App with PM2...
-                        ssh -o StrictHostKeyChecking=no -i ${PRIVATE_KEY_PATH} ubuntu@${ANSIBLE_HOST} "pm2 restart chat-app || pm2 start /home/ubuntu/chat-app/app.js --name chat-app"
+                        echo Restarting chat app with PM2...
+                        ssh -o StrictHostKeyChecking=no -i ${SSH_KEY} ${REMOTE_USER}@${EC2_IP} "pm2 restart chat-app || pm2 start ~/chat-app/app.js --name chat-app"
                     '''
                 }
             }
+        }
+    }
+
+    post {
+        failure {
+            echo "Pipeline failed. Please check Jenkins logs for details."
+        }
+        success {
+            echo "Deployment completed successfully!"
         }
     }
 }
