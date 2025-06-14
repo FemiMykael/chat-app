@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        EC2_IP = "3.219.208.168"
-        REMOTE_USER = "ubuntu"
-        SSH_KEY = "/var/lib/jenkins/.ssh/chat-ci"
+        REMOTE_HOST = '3.219.208.168'
+        SSH_KEY_PATH = '/var/lib/jenkins/.ssh/chat-ci'
+        ANSIBLE_PLAYBOOK = '/usr/bin/ansible-playbook'  // use full path
     }
 
     stages {
@@ -16,11 +16,10 @@ pipeline {
 
         stage('Run Ansible Playbook') {
             steps {
-                sshagent(credentials: ['chat-ec2-key']) {
+                sshagent (credentials: ['chat-ec2-key']) {
                     sh '''
                         echo Running Ansible playbook on remote server...
-                        export PATH="/usr/bin:/usr/local/bin:/usr/sbin:/bin:/usr/local/sbin:$PATH"
-                        ansible-playbook -i ${EC2_IP}, ./ansible/site.yml --private-key ${SSH_KEY} -u ${REMOTE_USER}
+                        ${ANSIBLE_PLAYBOOK} -i ${REMOTE_HOST}, ./ansible/site.yml --private-key ${SSH_KEY_PATH} -u ubuntu
                     '''
                 }
             }
@@ -28,10 +27,10 @@ pipeline {
 
         stage('Restart App with PM2') {
             steps {
-                sshagent(credentials: ['chat-ec2-key']) {
+                sshagent (credentials: ['chat-ec2-key']) {
                     sh '''
-                        echo Restarting chat app with PM2...
-                        ssh -o StrictHostKeyChecking=no -i ${SSH_KEY} ${REMOTE_USER}@${EC2_IP} 'pm2 restart chat-app || pm2 start /home/ubuntu/chat-app/app.js --name chat-app'
+                        echo Restarting PM2 App...
+                        ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_PATH} ubuntu@${REMOTE_HOST} 'pm2 restart chat-app || pm2 start /home/ubuntu/chat-app/app.js --name chat-app'
                     '''
                 }
             }
@@ -41,6 +40,9 @@ pipeline {
     post {
         failure {
             echo 'Pipeline failed. Please check Jenkins logs for details.'
+        }
+        success {
+            echo 'Deployment completed successfully.'
         }
     }
 }
