@@ -1,18 +1,36 @@
-// Jenkinsfile
 pipeline {
     agent any
-
+    environment {
+        ANSIBLE_HOST_KEY_CHECKING = 'False'
+    }
     stages {
-        stage('Deploy to EC2') {
+        stage('Checkout Code') {
             steps {
-                sshagent(['chat-ec2-key']) {
+                git 'https://github.com/FemiMykael/chat-app.git'
+            }
+        }
+
+        stage('Run Ansible Playbook') {
+            steps {
+                sshagent (credentials: ['chat-ec2-key']) {
                     sh '''
-                        ssh -o StrictHostKeyChecking=no ubuntu@3.219.208.168 '
-                          cd chat-app &&
-                          git pull origin master &&
-                          npm install &&
-                          pm2 restart chat-app
-                        '
+                    ansible-playbook -i "3.219.208.168," ./ansible/site.yml \
+                      --private-key ~/.ssh/chat-ci -u ubuntu
+                    '''
+                }
+            }
+        }
+
+        stage('Restart App') {
+            steps {
+                sshagent (credentials: ['chat-ec2-key']) {
+                    sh '''
+                    ssh -o StrictHostKeyChecking=no ubuntu@3.219.208.168 '
+                      cd ~/chat-app &&
+                      git pull origin main &&
+                      npm install &&
+                      pm2 restart chat-app
+                    '
                     '''
                 }
             }
